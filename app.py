@@ -1,51 +1,59 @@
 import streamlit as st
 import pandas as pd
-import joblib
-import os
+import numpy as np
+import pickle
+from sklearn.ensemble import RandomForestClassifier  # Example classifier
+from sklearn.linear_model import LinearRegression  # Example regressor
 
-st.title("Machine Learning Model Deployment")
+st.title("Interactive Model Deployment Without PyCaret")
 
-# 📌 Step 1: Upload Model File
-st.sidebar.header("Upload Model")
-uploaded_model = st.sidebar.file_uploader("models/best_regrression_model.pkl", type=["pkl"])
+# Upload a model file
+uploaded_model = st.file_uploader("Upload your scikit-learn model (.pkl)", type=["pkl"])
 
 if uploaded_model:
-    # 📌 Step 2: Save Uploaded Model to 'models' Folder
-    model_path = os.path.join("models", "uploaded_model.pkl")
-    os.makedirs("models", exist_ok=True)  # Create 'models' folder if it doesn't exist
-
-    with open(model_path, "wb") as f:
+    # Save and load the uploaded model
+    with open("temp_model.pkl", "wb") as f:
         f.write(uploaded_model.getbuffer())
 
-    # 📌 Step 3: Load the Model
-    try:
-        model = joblib.load(model_path)
-        st.sidebar.success("Model uploaded and loaded successfully!")
-    except Exception as e:
-        st.sidebar.error(f"Error loading model: {e}")
-        st.stop()
-else:
-    st.sidebar.warning("Please upload a model first.")
-    st.stop()
+    # Load the model with pickle
+    with open("temp_model.pkl", "rb") as f:
+        model = pickle.load(f)
 
-# 📌 Step 4: Extract Feature Names (if available)
-if hasattr(model, "feature_names_in_"):
-    feature_names = list(model.feature_names_in_)
-else:
-    feature_names = [f"Feature {i+1}" for i in range(model.n_features_in_)]
+    st.success("Model uploaded and loaded successfully!")
 
-# 📌 Step 5: Accept User Inputs for Features
-st.subheader("Enter Feature Values")
-user_inputs = {}
+    # Dynamically ask for feature inputs
+    st.subheader("Enter Feature Values")
 
-for feature in feature_names:
-    user_inputs[feature] = st.text_input(f"{feature}", "")
+    # Extract feature names using model's `feature_names_in_` attribute (for classifiers)
+    # or you can manually define feature names if they are not available.
+    if hasattr(model, 'feature_names_in_'):
+        feature_names = list(model.feature_names_in_)  # For models like RandomForest
+    else:
+        # If the model does not have `feature_names_in_`, you can manually define them
+        # For example, for a random forest model trained on [feature1, feature2, feature3]
+        feature_names = ['feature1', 'feature2', 'feature3']  # Replace with actual feature names
 
-# 📌 Step 6: Make Predictions
-if st.button("Predict"):
-    try:
-        input_df = pd.DataFrame([user_inputs]).astype(float)  # Convert inputs to float
-        prediction = model.predict(input_df)  # Make Prediction
-        st.success(f"Prediction: {prediction[0]}")  # Display Prediction
-    except Exception as e:
-        st.error(f"Error during prediction: {e}")
+    user_inputs = {}
+
+    for feature in feature_names:
+        user_inputs[feature] = st.text_input(f"Enter {feature}", "")
+
+    # Convert input to DataFrame and handle conversion to correct data types
+    if st.button("Predict"):
+        try:
+            # Convert user inputs to appropriate data types
+            input_data = {k: [v] for k, v in user_inputs.items()}
+            input_df = pd.DataFrame(input_data)
+
+            # Make predictions using the uploaded model
+            if isinstance(model, RandomForestClassifier):
+                prediction = model.predict(input_df)
+                st.success(f"Prediction (Class): {prediction[0]}")
+            elif isinstance(model, LinearRegression):
+                prediction = model.predict(input_df)
+                st.success(f"Prediction (Value): {prediction[0]}")
+            else:
+                st.warning("Model type not recognized. Make sure it is a classifier or regressor.")
+
+        except Exception as e:
+            st.error(f"Error in making prediction: {e}")
