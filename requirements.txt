@@ -1,5 +1,5 @@
-python==3.9
-streamlit==1.30.0
+python
+streamlit
 pandas
 numpy
 scikit-learn

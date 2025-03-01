@@ -7,7 +7,7 @@ st.title("Machine Learning Model Deployment")
 
 # 📌 Step 1: Upload Model File
 st.sidebar.header("Upload Model")
-uploaded_model = st.sidebar.file_uploader("Upload a trained model (.pkl)", type=["pkl"])
+uploaded_model = st.sidebar.file_uploader("models/best_regrression_model.pkl", type=["pkl"])
 
 if uploaded_model:
     # 📌 Step 2: Save Uploaded Model to 'models' Folder
