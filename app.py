@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import os
 from sklearn.ensemble import RandomForestClassifier  # Example classifier
 from sklearn.linear_model import LinearRegression  # Example regressor
 
@@ -11,27 +12,32 @@ st.title("Interactive Model Deployment Without PyCaret")
 uploaded_model = st.file_uploader("Upload your scikit-learn model (.pkl)", type=["pkl"])
 
 if uploaded_model:
-    # Save and load the uploaded model
-    with open("temp_model.pkl", "wb") as f:
+    # Create model directory if it doesn't exist
+    os.makedirs("models", exist_ok=True)
+
+    # Save uploaded model
+    model_path = "models/uploaded_model.pkl"
+    with open(model_path, "wb") as f:
         f.write(uploaded_model.getbuffer())
 
     # Load the model with pickle
-    with open("temp_model.pkl", "rb") as f:
+    with open(model_path, "rb") as f:
         model = pickle.load(f)
 
     st.success("Model uploaded and loaded successfully!")
+
+    # Ask user to specify whether the model is for classification or regression
+    model_type = st.radio("Select Model Type", ["Classification", "Regression"])
 
     # Dynamically ask for feature inputs
     st.subheader("Enter Feature Values")
 
     # Extract feature names using model's `feature_names_in_` attribute (for classifiers)
-    # or you can manually define feature names if they are not available.
     if hasattr(model, 'feature_names_in_'):
-        feature_names = list(model.feature_names_in_)  # For models like RandomForest
+        feature_names = list(model.feature_names_in_)  # For scikit-learn models
     else:
-        # If the model does not have `feature_names_in_`, you can manually define them
-        # For example, for a random forest model trained on [feature1, feature2, feature3]
-        feature_names = ['feature1', 'feature2', 'feature3']  # Replace with actual feature names
+        # If model doesn't have feature names, manually define or ask the user
+        feature_names = st.text_area("Enter feature names (comma-separated)").split(",")
 
     user_inputs = {}
 
@@ -41,19 +47,19 @@ if uploaded_model:
     # Convert input to DataFrame and handle conversion to correct data types
     if st.button("Predict"):
         try:
-            # Convert user inputs to appropriate data types
-            input_data = {k: [v] for k, v in user_inputs.items()}
+            # Convert user inputs to numeric values
+            input_data = {k: [float(v)] for k, v in user_inputs.items()}
             input_df = pd.DataFrame(input_data)
 
             # Make predictions using the uploaded model
-            if isinstance(model, RandomForestClassifier):
+            if model_type == "Classification":
                 prediction = model.predict(input_df)
                 st.success(f"Prediction (Class): {prediction[0]}")
-            elif isinstance(model, LinearRegression):
+            elif model_type == "Regression":
                 prediction = model.predict(input_df)
                 st.success(f"Prediction (Value): {prediction[0]}")
             else:
-                st.warning("Model type not recognized. Make sure it is a classifier or regressor.")
+                st.warning("Invalid model type selected.")
 
         except Exception as e:
             st.error(f"Error in making prediction: {e}")
